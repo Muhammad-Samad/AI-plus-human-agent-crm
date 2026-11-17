@@ -65,21 +65,25 @@ AI Support Chat provides a fully headless JSON API powering a two-sided support 
 ## Key Features
 
 ### AI ↔ Human Handover
+
 Every conversation starts in **AI mode**. An agent can take it over (`POST /agent/conversations/{uuid}/takeover`), switching the mode to **human**. While in human mode the AI is silent and the agent replies directly. The agent can release back to AI at any time. If the AI itself decides it cannot handle a request it appends `[ESCALATE]` to its response, which automatically flags the conversation as `pending_handover` and broadcasts the event to all connected agents.
 
 ### Real-time Events (Laravel Reverb)
-| Event | Channel(s) | Payload |
-|-------|-----------|---------|
-| `message.sent` | `agent.dashboard`, `conversation.{uuid}` | Full message + attachments |
-| `user.typing` | `agent.dashboard`, `conversation.{uuid}` | `sender_type`, `is_typing` |
-| `ai.typing` | `conversation.{id}` | `is_typing` |
+
+| Event                     | Channel(s)                               | Payload                      |
+| ------------------------- | ---------------------------------------- | ---------------------------- |
+| `message.sent`            | `agent.dashboard`, `conversation.{uuid}` | Full message + attachments   |
+| `user.typing`             | `agent.dashboard`, `conversation.{uuid}` | `sender_type`, `is_typing`   |
+| `ai.typing`               | `conversation.{id}`                      | `is_typing`                  |
 | `conversation.taken_over` | `agent.dashboard`, `conversation.{uuid}` | Mode, status, assigned agent |
-| `conversation.released` | `agent.dashboard`, `conversation.{uuid}` | Mode, status |
+| `conversation.released`   | `agent.dashboard`, `conversation.{uuid}` | Mode, status                 |
 
 ### Pluggable AI Provider
+
 Set `AI_PROVIDER=anthropic` or `AI_PROVIDER=openai` in `.env`. Both providers share the same system prompt and support vision (image attachments) and optional document extraction.
 
 ### File Attachments
+
 - Up to **5 files per message**, max **10 MB each**.
 - Accepted types: `jpg`, `jpeg`, `png`, `gif`, `webp`, `pdf`, `doc`, `docx`, `txt`, `zip`.
 - All files are uploaded to **Cloudinary** and stored with full metadata.
@@ -87,35 +91,37 @@ Set `AI_PROVIDER=anthropic` or `AI_PROVIDER=openai` in `.env`. Both providers sh
 - **Documents** (pdf, doc, docx, txt) are optionally extracted server-side (`DOCUMENT_EXTRACTION_ENABLED=true`) and injected as plain text into the AI context. When disabled (recommended default for sensitive documents), the AI is told only the file name and escalates to a human agent.
 
 ### Conversation Statuses & Modes
-| | `ai` mode | `human` mode |
-|---|---|---|
-| `open` | AI is actively replying | Agent is actively replying |
-| `pending_handover` | AI flagged for escalation | - |
-| `closed` | No new messages accepted | No new messages accepted |
+
+|                    | `ai` mode                 | `human` mode               |
+| ------------------ | ------------------------- | -------------------------- |
+| `open`             | AI is actively replying   | Agent is actively replying |
+| `pending_handover` | AI flagged for escalation | -                          |
+| `closed`           | No new messages accepted  | No new messages accepted   |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Laravel 13 (PHP 8.3+) |
-| Authentication | Laravel Sanctum (bearer tokens) |
-| Real-time | Laravel Reverb (WebSockets) |
-| Queue | Laravel Queue (database driver by default) |
-| AI - Anthropic | `claude-haiku-4-5-20251001` via HTTP |
-| AI - OpenAI | `gpt-4o` via HTTP |
-| File storage | Cloudinary |
-| PDF parsing | `smalot/pdfparser` |
-| DOCX parsing | `phpoffice/phpword` |
-| API docs | Scribe |
-| Frontend assets | Vite + Tailwind CSS v4 |
+| Layer           | Technology                                 |
+| --------------- | ------------------------------------------ |
+| Framework       | Laravel 13 (PHP 8.3+)                      |
+| Authentication  | Laravel Sanctum (bearer tokens)            |
+| Real-time       | Laravel Reverb (WebSockets)                |
+| Queue           | Laravel Queue (database driver by default) |
+| AI - Anthropic  | `claude-haiku-4-5-20251001` via HTTP       |
+| AI - OpenAI     | `gpt-4o` via HTTP                          |
+| File storage    | Cloudinary                                 |
+| PDF parsing     | `smalot/pdfparser`                         |
+| DOCX parsing    | `phpoffice/phpword`                        |
+| API docs        | Scribe                                     |
+| Frontend assets | Vite + Tailwind CSS v4                     |
 
 ---
 
 ## Installation
 
 ### Prerequisites
+
 - PHP 8.3+
 - Composer
 - Node.js + npm
@@ -152,8 +158,8 @@ php artisan db:seed
 
 This creates three agent accounts:
 
-| Name | Email | Password |
-|------|-------|----------|
+| Name          | Email             | Password |
+| ------------- | ----------------- | -------- |
 | Sarah Support | sarah@support.com | password |
 | James Support | james@support.com | password |
 | Linda Support | linda@support.com | password |
@@ -203,6 +209,7 @@ composer run dev
 ```
 
 This concurrently starts:
+
 - `php artisan serve` - HTTP server
 - `php artisan queue:listen` - queue worker (processes AI replies; auto-restarts after code changes, unlike `queue:work`)
 - `php artisan reverb:start` - WebSocket server (add `--debug` to log all incoming/outgoing frames)
@@ -222,21 +229,22 @@ Then visit `/docs`.
 
 ### Authentication
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/auth/login` | - | Agent login → returns bearer token |
-| POST | `/auth/logout` | Bearer | Revoke current token |
+| Method | Endpoint       | Auth   | Description                        |
+| ------ | -------------- | ------ | ---------------------------------- |
+| POST   | `/auth/login`  | -      | Agent login → returns bearer token |
+| POST   | `/auth/logout` | Bearer | Revoke current token               |
 
 ### Customer Chat (no auth - identified by `session_token`)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/chat` | Start a new conversation |
-| GET | `/chat/{sessionToken}/messages` | Fetch message history |
-| POST | `/chat/{sessionToken}/messages` | Send a message (+ optional file attachments) |
-| POST | `/chat/{sessionToken}/typing` | Broadcast typing indicator |
+| Method | Endpoint                        | Description                                  |
+| ------ | ------------------------------- | -------------------------------------------- |
+| POST   | `/chat`                         | Start a new conversation                     |
+| GET    | `/chat/{sessionToken}/messages` | Fetch message history                        |
+| POST   | `/chat/{sessionToken}/messages` | Send a message (+ optional file attachments) |
+| POST   | `/chat/{sessionToken}/typing`   | Broadcast typing indicator                   |
 
 **Start a conversation:**
+
 ```json
 POST /api/v1/chat
 {
@@ -244,9 +252,11 @@ POST /api/v1/chat
   "customer_email": "john@example.com"
 }
 ```
+
 Returns a `session_token` - store this client-side; it identifies all future requests for this conversation.
 
 **Send a message with attachments:**
+
 ```
 POST /api/v1/chat/{sessionToken}/messages
 Content-Type: multipart/form-data
@@ -257,16 +267,17 @@ attachments[]=<file>
 
 ### Agent Dashboard (Bearer token required)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/agent/conversations` | List all conversations (filterable by status) |
-| GET | `/agent/conversations/{uuid}/messages` | Fetch conversation history |
-| POST | `/agent/conversations/{uuid}/takeover` | Switch to human mode and assign to self |
-| POST | `/agent/conversations/{uuid}/release` | Release back to AI |
-| POST | `/agent/conversations/{uuid}/reply` | Send agent reply |
-| POST | `/agent/conversations/{uuid}/typing` | Broadcast typing indicator |
+| Method | Endpoint                               | Description                                   |
+| ------ | -------------------------------------- | --------------------------------------------- |
+| GET    | `/agent/conversations`                 | List all conversations (filterable by status) |
+| GET    | `/agent/conversations/{uuid}/messages` | Fetch conversation history                    |
+| POST   | `/agent/conversations/{uuid}/takeover` | Switch to human mode and assign to self       |
+| POST   | `/agent/conversations/{uuid}/release`  | Release back to AI                            |
+| POST   | `/agent/conversations/{uuid}/reply`    | Send agent reply                              |
+| POST   | `/agent/conversations/{uuid}/typing`   | Broadcast typing indicator                    |
 
 **Filter conversations by status:**
+
 ```
 GET /api/v1/agent/conversations?status=pending_handover&per_page=10
 ```
@@ -278,32 +289,36 @@ GET /api/v1/agent/conversations?status=pending_handover&per_page=10
 Using [laravel-echo](https://github.com/laravel/echo) + pusher-js on the frontend:
 
 ```js
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
+import Echo from "laravel-echo";
+import Pusher from "pusher-js";
 
 window.Pusher = Pusher;
 
 const echo = new Echo({
-    broadcaster: 'reverb',
+    broadcaster: "reverb",
     key: import.meta.env.VITE_REVERB_APP_KEY,
     wsHost: import.meta.env.VITE_REVERB_HOST,
     wsPort: import.meta.env.VITE_REVERB_PORT,
     forceTLS: false,
-    enabledTransports: ['ws', 'wss'],
+    enabledTransports: ["ws", "wss"],
 });
 
 // Subscribe to a conversation channel (customer side)
 echo.channel(`conversation.${conversationUuid}`)
-    .listen('.message.sent', (e) => console.log('New message:', e.message))
-    .listen('.ai.typing', (e) => console.log('AI typing:', e.is_typing))
-    .listen('.user.typing', (e) => console.log('Typing:', e))
-    .listen('.conversation.taken_over', (e) => console.log('Agent joined:', e))
-    .listen('.conversation.released', (e) => console.log('Back to AI:', e));
+    .listen(".message.sent", (e) => console.log("New message:", e.message))
+    .listen(".ai.typing", (e) => console.log("AI typing:", e.is_typing))
+    .listen(".user.typing", (e) => console.log("Typing:", e))
+    .listen(".conversation.taken_over", (e) => console.log("Agent joined:", e))
+    .listen(".conversation.released", (e) => console.log("Back to AI:", e));
 
 // Subscribe to agent dashboard channel (agent side)
-echo.channel('agent.dashboard')
-    .listen('.message.sent', (e) => { /* update conversation list */ })
-    .listen('.conversation.taken_over', (e) => { /* update status badge */ });
+echo.channel("agent.dashboard")
+    .listen(".message.sent", (e) => {
+        /* update conversation list */
+    })
+    .listen(".conversation.taken_over", (e) => {
+        /* update status badge */
+    });
 ```
 
 ---

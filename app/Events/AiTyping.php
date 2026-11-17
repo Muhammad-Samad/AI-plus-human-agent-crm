@@ -17,19 +17,21 @@ class AiTyping implements ShouldBroadcastNow
      * Create a new event instance.
      */
     public function __construct(
-        public readonly int  $conversationId,
-        public readonly bool $isTyping,
+        public readonly string $conversationUuid,
+        public readonly bool   $isTyping,
     ) {}
 
     /**
      * Get the channels the event should broadcast on.
+     * Uses the UUID channel like every other conversation event, so the
+     * customer widget and agent dashboard actually receive it.
      *
      * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
         return [
-            new Channel('conversation.' . $this->conversationId),
+            new Channel('conversation.' . $this->conversationUuid),
         ];
     }
 
@@ -41,8 +43,8 @@ class AiTyping implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'conversation_id' => $this->conversationId,
-            'is_typing'       => $this->isTyping,
+            'conversation_uuid' => $this->conversationUuid,
+            'is_typing'         => $this->isTyping,
         ];
     }
 }

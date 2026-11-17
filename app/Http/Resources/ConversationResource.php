@@ -24,6 +24,16 @@ class ConversationResource extends JsonResource
                 'uuid'   => $this->assignedAgent->uuid,
                 'name' => $this->assignedAgent->name,
             ]),
+            // Only present when the latest message was eager-loaded (agent inbox listing)
+            'last_message'   => $this->whenLoaded('messages', function () {
+                $message = $this->messages->first();
+
+                return $message ? [
+                    'sender_type' => $message->sender_type?->value,
+                    'body'        => $message->body,
+                    'created_at'  => $message->created_at?->toISOString(),
+                ] : null;
+            }),
             'taken_over_at'  => $this->taken_over_at?->toISOString(),
             'created_at'     => $this->created_at->toISOString(),
         ];

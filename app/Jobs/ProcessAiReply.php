@@ -161,6 +161,9 @@ class ProcessAiReply implements ShouldQueue
             $conversation,
             ConversationStatus::PENDING_HANDOVER
         );
+
+        // Notify agents in real time, same as a normal AI escalation
+        broadcast(new ConversationTakenOver($conversation->fresh()))->toOthers();
     }
 
     // -------------------------------------------------------
@@ -185,7 +188,11 @@ class ProcessAiReply implements ShouldQueue
 
     private function broadcastTyping(bool $isTyping): void
     {
-        broadcast(new AiTyping($this->conversationId, $isTyping));
+        $uuid = Conversation::whereKey($this->conversationId)->value('uuid');
+
+        if ($uuid) {
+            broadcast(new AiTyping($uuid, $isTyping));
+        }
     }
 
     // -------------------------------------------------------
